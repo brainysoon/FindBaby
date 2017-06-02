@@ -10,5 +10,66 @@
     <schema id="5" name="sfexpress"/>
     <schema id="6" name="superhouse"/>
     <schema id="7" name="zkeps"/>
+    <table id="8" parent="1" name="baby"/>
+    <column id="9" parent="8" name="BabyId">
+      <mandatory>1</mandatory>
+      <data-type>char(20)|0</data-type>
+    </column>
+    <column id="10" parent="8" name="BabyName">
+      <mandatory>1</mandatory>
+      <data-type>varchar(50)|0</data-type>
+    </column>
+    <column id="11" parent="8" name="BabyClass">
+      <data-type>varchar(20)|0</data-type>
+    </column>
+    <column id="12" parent="8" name="BabyFindTime">
+      <mandatory>1</mandatory>
+      <data-type>datetime|0</data-type>
+    </column>
+    <column id="13" parent="8" name="BabyLookLike">
+      <data-type>varchar(255)|0</data-type>
+    </column>
+    <column id="14" parent="8" name="BabyLong">
+      <data-type>double|0</data-type>
+    </column>
+    <column id="15" parent="8" name="BabyLat">
+      <data-type>double|0</data-type>
+    </column>
+    <column id="16" parent="8" name="BabyPassSecret">
+      <data-type>varchar(50)|0</data-type>
+    </column>
+    <column id="17" parent="8" name="BabySecretKey">
+      <data-type>varchar(50)|0</data-type>
+    </column>
+    <column id="18" parent="8" name="BabyUpdateTime">
+      <mandatory>1</mandatory>
+      <data-type>datetime|0</data-type>
+    </column>
+    <column id="19" parent="8" name="BabyFindMark">
+      <data-type>int(11)|0</data-type>
+    </column>
+    <column id="20" parent="8" name="BabyMark">
+      <data-type>int(11)|0</data-type>
+    </column>
+    <column id="21" parent="8" name="BabySlead">
+      <data-type>int(11)|0</data-type>
+    </column>
+    <column id="22" parent="8" name="BabyFindPhone">
+      <mandatory>1</mandatory>
+      <data-type>varchar(11)|0</data-type>
+    </column>
+    <index id="23" parent="8" name="BabyId">
+      <columns>BabyId</columns>
+      <desc-columns></desc-columns>
+      <unique>1</unique>
+    </index>
+    <key id="24" parent="8" name="PRIMARY">
+      <columns>BabyId</columns>
+      <primary>1</primary>
+    </key>
+    <key id="25" parent="8" name="BabyId">
+      <columns>BabyId</columns>
+      <underlying-index>BabyId</underlying-index>
+    </key>
   </database-model>
 </dataSource>
