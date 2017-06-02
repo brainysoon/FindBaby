@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">寻找宝贝</string>
+
+    <!--Menu-->
+    <string name="menu_title_find">寻找宝贝</string>
+    <string name="menu_title_add">添加宝贝</string>
+
+    <!--Button-->
+    <string name="positive_text">确定</string>
+    <string name="negative_text">取消</string>
 </resources>
