@@ -597,6 +597,7 @@
 									},
 									"name": "BabySecretKey",
 									"type": "VARCHAR",
+									"length": "50",
 									"primaryKey": false,
 									"foreignKey": false,
 									"nullable": false,
