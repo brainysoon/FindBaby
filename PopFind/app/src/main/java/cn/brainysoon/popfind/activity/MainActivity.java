@@ -3,13 +3,17 @@ package cn.brainysoon.popfind.activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
-import android.widget.TextView;
+import android.widget.EditText;
+import android.widget.Toast;
 
+import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationClient;
@@ -21,6 +25,7 @@ import com.amap.api.maps2d.LocationSource;
 import com.amap.api.maps2d.MapView;
 import com.amap.api.maps2d.model.BitmapDescriptor;
 import com.amap.api.maps2d.model.BitmapDescriptorFactory;
+import com.amap.api.maps2d.model.CameraPosition;
 import com.amap.api.maps2d.model.Circle;
 import com.amap.api.maps2d.model.CircleOptions;
 import com.amap.api.maps2d.model.LatLng;
@@ -57,14 +62,18 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
     private AMapLocationClient mlocationClient;
     private AMapLocationClientOption mLocationOption;
 
-    private TextView mLocationErrText;
     private static final int STROKE_COLOR = Color.argb(180, 3, 145, 255);
     private static final int FILL_COLOR = Color.argb(10, 0, 0, 180);
     private boolean mFirstFix = false;
     private Marker mLocMarker;
     private SensorEventHelper mSensorHelper;
     private Circle mCircle;
-    public static final String LOCATION_MARKER_FLAG = "mylocation";
+    public static final String LOCATION_MARKER_FLAG = "我的位置";
+
+    private boolean isItemClickAction;
+    private boolean isInputKeySearch;
+    private LatLng searchLatlon;
+    private Marker locationMarker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,12 +110,15 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 builder.customView(R.layout.custom_view_add, true);
                 builder.positiveText(getResources().getString(R.string.positive_text));
                 builder.negativeText(getResources().getString(R.string.negative_text));
+                builder.cancelable(false);
 
                 //dialogs
                 MaterialDialog dialog = builder.build();
 
                 //自定义View
-                View custom_view = dialog.getCustomView();
+                View custom_add_view = dialog.getCustomView();
+
+                initCustomAddView(custom_add_view);
 
                 //显示
                 dialog.show();
@@ -127,17 +139,44 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 builder.customView(R.layout.custom_view_find, true);
                 builder.positiveText(getResources().getString(R.string.positive_text));
                 builder.negativeText(getResources().getString(R.string.negative_text));
+                builder.cancelable(false);
+
+                builder.onPositive(new MaterialDialog.SingleButtonCallback() {
+                    @Override
+                    public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+
+                        initCustomAddView(dialog.getCustomView());
+                    }
+                });
 
                 //dialogs
                 MaterialDialog dialog = builder.build();
-
-                //自定义View
-                View custom_view = dialog.getCustomView();
 
                 //显示
                 dialog.show();
             }
         });
+    }
+
+    private void initCustomFindView(View rootView) {
+
+    }
+
+    private void initCustomAddView(View rootView) {
+
+        //BindView
+        EditText textAddName = (EditText) rootView.findViewById(R.id.baby_add_name);
+        EditText textAddClass = (EditText) rootView.findViewById(R.id.baby_add_class);
+        EditText textAddSecret = (EditText) rootView.findViewById(R.id.baby_add_secret);
+        EditText textAddKey = (EditText) rootView.findViewById(R.id.baby_add_key);
+        EditText textAddPhone = (EditText) rootView.findViewById(R.id.baby_add_phone);
+
+        //prepare paramarter
+        String textName = textAddName.getText().toString().trim();
+        String textClass = textAddClass.getText().toString().trim();
+        String textSecret = textAddSecret.getText().toString().trim();
+        String textKey = textAddKey.getText().toString().trim();
+        String textPhone = textAddPhone.getText().toString().trim();
     }
 
     /**
@@ -152,8 +191,36 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         if (mSensorHelper != null) {
             mSensorHelper.registerSensorListener();
         }
-        mLocationErrText = (TextView) findViewById(R.id.location_errInfo_text);
-        mLocationErrText.setVisibility(View.GONE);
+
+        LatLng latLng = aMap.getCameraPosition().target;
+        Point screenPosition = aMap.getProjection().toScreenLocation(latLng);
+        locationMarker = aMap.addMarker(new MarkerOptions()
+                .anchor(0.5f, 0.5f)
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.marker)));
+        //设置Marker在屏幕上,不跟随地图移动
+        locationMarker.setPositionByPixels(screenPosition.x, screenPosition.y);
+        locationMarker.setZIndex(1);
+
+        aMap.setOnCameraChangeListener(new AMap.OnCameraChangeListener() {
+            @Override
+            public void onCameraChange(CameraPosition cameraPosition) {
+
+            }
+
+            @Override
+            public void onCameraChangeFinish(CameraPosition cameraPosition) {
+
+                searchLatlon = new LatLng(cameraPosition.target.latitude, cameraPosition.target.longitude);
+                if (!isItemClickAction && !isInputKeySearch) {
+
+                    locationMarker.setPosition(searchLatlon);
+                }
+                isInputKeySearch = false;
+                isItemClickAction = false;
+
+                Log.e("location", "marker");
+            }
+        });
     }
 
     /**
@@ -222,26 +289,34 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         if (mListener != null && amapLocation != null) {
             if (amapLocation != null
                     && amapLocation.getErrorCode() == 0) {
-                mLocationErrText.setVisibility(View.GONE);
                 LatLng location = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
-                if (!mFirstFix) {
+                if (!mFirstFix) {   //只定位一次就够了
                     mFirstFix = true;
                     addCircle(location, amapLocation.getAccuracy());//添加定位精度圆
                     addMarker(location);//添加定位图标
                     mSensorHelper.setCurrentMarker(mLocMarker);//定位图标旋转
+
+                    //停止定位
+                    mlocationClient.stopLocation();
                 } else {
+
                     mCircle.setCenter(location);
                     mCircle.setRadius(amapLocation.getAccuracy());
                     mLocMarker.setPosition(location);
                 }
+
+                Log.e("Location:", "Here");
+
                 aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 18));
             } else {
                 String errText = "定位失败," + amapLocation.getErrorCode() + ": " + amapLocation.getErrorInfo();
                 Log.e("AmapErr", errText);
-                mLocationErrText.setVisibility(View.VISIBLE);
-                mLocationErrText.setText(errText);
+
+                Toast.makeText(this, errText, Toast.LENGTH_LONG).show();
             }
         }
+
+        Log.e("LocationPlus:", ">>>>Here");
     }
 
     /**

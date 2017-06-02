@@ -2,10 +2,19 @@
     <string name="app_name">寻找宝贝</string>
 
     <!--Menu-->
-    <string name="menu_title_find">寻找宝贝</string>
-    <string name="menu_title_add">添加宝贝</string>
+    <string name="menu_title_find">寻找丢失宝贝</string>
+    <string name="menu_title_add">添加丢失宝贝</string>
 
     <!--Button-->
     <string name="positive_text">确定</string>
     <string name="negative_text">取消</string>
+
+    <!--Hint String-->
+    <string name="baby_name_text_hint">宝贝名称</string>
+    <string name="baby_class_text_hint">宝贝分类</string>
+    <string name="baby_secret_text_hint">秘密问题</string>
+    <string name="baby_key_text_hint">秘密答案</string>
+    <string name="baby_finder_phone_text_hint">我的号码</string>
+    <string name="baby_search_circle">搜索半径</string>
+
 </resources>

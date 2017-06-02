@@ -15,17 +15,6 @@
             android:id="@+id/map"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-
-        <TextView
-            android:id="@+id/location_errInfo_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|left"
-            android:layout_marginBottom="10dp"
-            android:layout_marginLeft="10dp"
-            android:background="@color/colorAccent"
-            android:text="TextView"
-            android:visibility="gone" />
     </RelativeLayout>
 
     <RelativeLayout
@@ -53,8 +42,7 @@
                 android:layout_height="wrap_content"
                 fab:fab_colorNormal="@color/pink"
                 fab:fab_colorPressed="@color/pink_pressed"
-                fab:fab_icon="@drawable/icon_add"
-                fab:fab_title="@string/menu_title_find" />
+                fab:fab_icon="@drawable/icon_add" />
 
             <com.getbase.floatingactionbutton.FloatingActionButton
                 android:id="@+id/action_search"
@@ -62,8 +50,7 @@
                 android:layout_height="wrap_content"
                 fab:fab_colorNormal="@color/pink"
                 fab:fab_colorPressed="@color/pink_pressed"
-                fab:fab_icon="@drawable/icon_serach"
-                fab:fab_title="@string/menu_title_add" />
+                fab:fab_icon="@drawable/icon_serach" />
 
         </com.getbase.floatingactionbutton.FloatingActionsMenu>
     </RelativeLayout>
