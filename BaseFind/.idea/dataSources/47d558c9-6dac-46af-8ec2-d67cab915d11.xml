@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataSource name="MySQL - basefind@localhost">
+  <database-model serializer="dbm" rdbms="MYSQL" format-version="2.6">
+    <schema id="1" name="basefind">
+      <visible>1</visible>
+    </schema>
+    <schema id="2" name="db_chaoshimana"/>
+    <schema id="3" name="enttax"/>
+    <schema id="4" name="information_schema"/>
+    <schema id="5" name="sfexpress"/>
+    <schema id="6" name="superhouse"/>
+    <schema id="7" name="zkeps"/>
+  </database-model>
+</dataSource>
