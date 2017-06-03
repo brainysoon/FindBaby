@@ -3,10 +3,12 @@ package cn.brainysoon.basefind.service.impl;
 import cn.brainysoon.basefind.Model.Baby;
 import cn.brainysoon.basefind.dao.BabyRepository;
 import cn.brainysoon.basefind.service.BabyService;
+import cn.brainysoon.basefind.util.DistanceUtils;
 import cn.brainysoon.basefind.util.RandomUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -21,7 +23,22 @@ public class BabyServiceImpl implements BabyService {
 
     @Override
     public List<Baby> getBabysByLongLatAndCircle(Double Long, Double Lat, Double Circle) {
-        return babyRepository.queryBabyByLongLatAndCircle(Long, Lat, Circle);
+        List<Baby> babies = babyRepository.queryBaby();
+
+        List<Baby> result = new ArrayList<>();
+
+        for (Baby baby : babies) {
+
+            Float distance = DistanceUtils.calculateLineDistance(Long, Lat, baby.getBabyLong(), baby.getBabyLat());
+
+            //在范围内
+            if (distance <= Circle) {
+
+                result.add(baby);
+            }
+        }
+
+        return result;
     }
 
     @Override

@@ -78,9 +78,8 @@ public class BabyRepositoryImpl implements BabyRepository, RowMapper<Baby> {
                 baby.getBabyFindPhone());
     }
 
-    public List<Baby> queryBabyByLongLatAndCircle(Double Long, Double Lat, Double Circle) {
+    public List<Baby> queryBaby() {
 
-        return jdbcOperations.query(QUERY_BABY_BASE_LONG_LAT_CIRCLE, this,
-                Long, Long, Lat, Lat, Circle * Circle);
+        return jdbcOperations.query(QUERY_BABY_BASE_LONG_LAT_CIRCLE, this);
     }
 }

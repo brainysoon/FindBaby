@@ -17,7 +17,7 @@ public interface BabyRepository {
     /**
      * 根据半径来查找
      */
-    String QUERY_BABY_BASE_LONG_LAT_CIRCLE = "SELECT * FROM baby WHERE (BabyLong-?)*(BabyLong-?)+(BabyLat-?)*(BabyLat-?)<=? AND BabySlead>0";
+    String QUERY_BABY_BASE_LONG_LAT_CIRCLE = "SELECT * FROM baby WHERE BabyFindMark<0 AND BabySlead>0";
 
     /**
      * @param baby
@@ -26,10 +26,7 @@ public interface BabyRepository {
     int insertBaby(Baby baby);
 
     /**
-     * @param Long
-     * @param Lat
-     * @param Circle
      * @return
      */
-    List<Baby> queryBabyByLongLatAndCircle(Double Long, Double Lat, Double Circle);
+    List<Baby> queryBaby();
 }
