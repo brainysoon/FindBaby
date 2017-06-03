@@ -40,6 +40,14 @@
             android:hint="@string/baby_finder_phone_text_hint"
             android:inputType="number" />
 
+        <TextView
+            android:id="@+id/err_add_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/err_hint"
+            android:textColor="@color/colorAccent"
+            android:visibility="invisible" />
+
     </LinearLayout>
 
 </LinearLayout>

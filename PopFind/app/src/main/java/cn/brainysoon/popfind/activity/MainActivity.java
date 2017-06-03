@@ -3,18 +3,21 @@ package cn.brainysoon.popfind.activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Point;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.alibaba.fastjson.JSONObject;
 import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationClient;
 import com.amap.api.location.AMapLocationClientOption;
@@ -34,10 +37,21 @@ import com.amap.api.maps2d.model.MarkerOptions;
 import com.getbase.floatingactionbutton.FloatingActionButton;
 import com.getbase.floatingactionbutton.FloatingActionsMenu;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import cn.brainysoon.popfind.R;
+import cn.brainysoon.popfind.model.Baby;
 import cn.brainysoon.popfind.util.SensorEventHelper;
+import okhttp3.FormBody;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements LocationSource, AMapLocationListener {
 
@@ -68,12 +82,31 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
     private Marker mLocMarker;
     private SensorEventHelper mSensorHelper;
     private Circle mCircle;
-    public static final String LOCATION_MARKER_FLAG = "我的位置";
+    public static final String LOCATION_MARKER_FLAG = "选取的位置";
 
     private boolean isItemClickAction;
     private boolean isInputKeySearch;
     private LatLng searchLatlon;
-    private Marker locationMarker;
+
+    private static final Double DEFAULT_LOCATION_RADIUS = 30D;
+
+    public static final MediaType JSON
+            = MediaType.parse("application/json; charset=utf-8");
+
+    private OkHttpClient client = new OkHttpClient();
+
+    private static final String DEFAULT_URL_ADD_BABY = "http://www.coolbhu.cn:8080/addbaby";
+    private static final String DEFAULT_URL_FIND_BABY = "http://www.coolbhu.cn:8080/findbaby";
+
+    //进度条的 Dialog
+    private MaterialDialog progressDialog = null;
+
+    private static final String JSON_OBJECT_KEY_RESULT = "result";
+
+    //搜索到的宝贝
+    private List<Baby> babyList = null;
+    private List<Marker> markers = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,15 +143,27 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 builder.customView(R.layout.custom_view_add, true);
                 builder.positiveText(getResources().getString(R.string.positive_text));
                 builder.negativeText(getResources().getString(R.string.negative_text));
+                builder.autoDismiss(false);
                 builder.cancelable(false);
+
+                builder.onPositive(new MaterialDialog.SingleButtonCallback() {
+                    @Override
+                    public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+
+                        initCustomAddView(dialog.getCustomView(), dialog);
+                    }
+                });
+
+                builder.onNegative(new MaterialDialog.SingleButtonCallback() {
+                    @Override
+                    public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+
+                        dialog.dismiss();
+                    }
+                });
 
                 //dialogs
                 MaterialDialog dialog = builder.build();
-
-                //自定义View
-                View custom_add_view = dialog.getCustomView();
-
-                initCustomAddView(custom_add_view);
 
                 //显示
                 dialog.show();
@@ -140,12 +185,21 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 builder.positiveText(getResources().getString(R.string.positive_text));
                 builder.negativeText(getResources().getString(R.string.negative_text));
                 builder.cancelable(false);
+                builder.autoDismiss(false);
 
                 builder.onPositive(new MaterialDialog.SingleButtonCallback() {
                     @Override
                     public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
 
-                        initCustomAddView(dialog.getCustomView());
+                        initCustomFindView(dialog.getCustomView(), dialog);
+                    }
+                });
+
+                builder.onNegative(new MaterialDialog.SingleButtonCallback() {
+                    @Override
+                    public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+
+                        dialog.dismiss();
                     }
                 });
 
@@ -158,11 +212,40 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         });
     }
 
-    private void initCustomFindView(View rootView) {
+    private void initCustomFindView(View rootView, MaterialDialog dialog) {
 
+
+        //拿到控件
+        EditText textFindClass = (EditText) rootView.findViewById(R.id.baby_find_class);
+        EditText textFindCircle = (EditText) rootView.findViewById(R.id.baby_find_circle);
+
+        //text
+        String textCircle = textFindCircle.getText().toString().trim();
+
+        if (textCircle.equals("")) {
+
+            textCircle = "1000";
+        }
+
+        //拼接url
+        String url = DEFAULT_URL_FIND_BABY + "?Long=" + searchLatlon.longitude +
+                "&Lat=" + searchLatlon.latitude + "&Circle=" + textCircle;
+
+        //出现进度条
+        MaterialDialog.Builder builder = new MaterialDialog.Builder(MainActivity.this);
+        builder.title(R.string.progress_title)
+                .content(R.string.progress_hint)
+                .progress(true, 0)
+                .cancelable(false)
+                .progressIndeterminateStyle(false);
+
+        dialog.dismiss();
+        progressDialog = builder.show();
+
+        new FindBabyAsyncTask().execute(url);
     }
 
-    private void initCustomAddView(View rootView) {
+    private void initCustomAddView(View rootView, MaterialDialog dialog) {
 
         //BindView
         EditText textAddName = (EditText) rootView.findViewById(R.id.baby_add_name);
@@ -170,6 +253,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         EditText textAddSecret = (EditText) rootView.findViewById(R.id.baby_add_secret);
         EditText textAddKey = (EditText) rootView.findViewById(R.id.baby_add_key);
         EditText textAddPhone = (EditText) rootView.findViewById(R.id.baby_add_phone);
+        TextView textView = (TextView) rootView.findViewById(R.id.err_add_text);
 
         //prepare paramarter
         String textName = textAddName.getText().toString().trim();
@@ -177,6 +261,41 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         String textSecret = textAddSecret.getText().toString().trim();
         String textKey = textAddKey.getText().toString().trim();
         String textPhone = textAddPhone.getText().toString().trim();
+
+        //判断都不为空
+        if (textName.equals("") ||
+                textClass.equals("") ||
+                textSecret.equals("") ||
+                textKey.equals("") ||
+                textPhone.equals("")) {
+
+            textView.setVisibility(View.VISIBLE);
+
+            return;
+        }
+
+        RequestBody formBody = new FormBody.Builder()
+                .add("babyname", textName)
+                .add("babyclass", textClass)
+                .add("passsecret", textSecret)
+                .add("secretkey", textKey)
+                .add("findphone", textPhone)
+                .add("babylong", searchLatlon.longitude + "")
+                .add("babylat", searchLatlon.latitude + "")
+                .build();
+
+        //出现进度条
+        MaterialDialog.Builder builder = new MaterialDialog.Builder(MainActivity.this);
+        builder.title(R.string.progress_title)
+                .content(R.string.progress_hint)
+                .progress(true, 0)
+                .cancelable(false)
+                .progressIndeterminateStyle(false);
+
+        dialog.dismiss();
+        progressDialog = builder.show();
+
+        new AddBabyAsyncTask().execute(formBody);
     }
 
     /**
@@ -192,15 +311,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             mSensorHelper.registerSensorListener();
         }
 
-        LatLng latLng = aMap.getCameraPosition().target;
-        Point screenPosition = aMap.getProjection().toScreenLocation(latLng);
-        locationMarker = aMap.addMarker(new MarkerOptions()
-                .anchor(0.5f, 0.5f)
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.marker)));
-        //设置Marker在屏幕上,不跟随地图移动
-        locationMarker.setPositionByPixels(screenPosition.x, screenPosition.y);
-        locationMarker.setZIndex(1);
-
         aMap.setOnCameraChangeListener(new AMap.OnCameraChangeListener() {
             @Override
             public void onCameraChange(CameraPosition cameraPosition) {
@@ -213,12 +323,82 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 searchLatlon = new LatLng(cameraPosition.target.latitude, cameraPosition.target.longitude);
                 if (!isItemClickAction && !isInputKeySearch) {
 
-                    locationMarker.setPosition(searchLatlon);
+                    mLocMarker.setPosition(searchLatlon);
+
+                    mCircle.setRadius(DEFAULT_LOCATION_RADIUS);
+                    mCircle.setCenter(searchLatlon);
                 }
                 isInputKeySearch = false;
                 isItemClickAction = false;
 
                 Log.e("location", "marker");
+            }
+        });
+
+        aMap.setOnMarkerClickListener(new AMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+
+                String str = marker.getSnippet();
+
+                try {
+
+                    final int index = Integer.parseInt(str);
+
+                    final Baby baby = babyList.get(index);
+
+                    MaterialDialog dialog = new MaterialDialog.Builder(MainActivity.this)
+                            .title(baby.getBabyName())
+                            .content(baby.getBabyPassSecret())
+                            .inputType(
+                                    InputType.TYPE_CLASS_TEXT
+                                            | InputType.TYPE_TEXT_VARIATION_PERSON_NAME
+                                            | InputType.TYPE_TEXT_FLAG_CAP_WORDS)
+                            .inputRange(2, 16)
+                            .positiveText(R.string.positive_text)
+                            .input(
+                                    R.string.baby_key_text_hint,
+                                    0,
+                                    false, new MaterialDialog.InputCallback() {
+                                        @Override
+                                        public void onInput(@NonNull MaterialDialog dialog, CharSequence input) {
+
+                                            //结果
+                                            String title = null;
+                                            String content = null;
+
+                                            String key = baby.getBabySecretKey().trim();
+                                            String inputkey = input.toString().trim();
+
+                                            //答案正确
+                                            if (key.compareTo(inputkey) == 0) {
+
+                                                title = "你可以给好心人打电话了";
+                                                content = "电话为：" + baby.getBabyFindPhone();
+                                            } else {
+
+                                                title = "答案不对";
+                                                content = "可能不是你的东西哦，再找找!";
+                                            }
+
+                                            MaterialDialog alertDialog = new MaterialDialog.Builder(MainActivity.this)
+                                                    .title(title)
+                                                    .content(content)
+                                                    .positiveText(R.string.positive_text)
+                                                    .build();
+
+                                            dialog.dismiss();
+                                            alertDialog.show();
+                                        }
+                                    })
+                            .show();
+
+                } catch (Exception ex) {
+
+                    ex.printStackTrace();
+                }
+
+                return false;
             }
         });
     }
@@ -289,30 +469,35 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         if (mListener != null && amapLocation != null) {
             if (amapLocation != null
                     && amapLocation.getErrorCode() == 0) {
-                LatLng location = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
+                searchLatlon = new LatLng(amapLocation.getLatitude(), amapLocation.getLongitude());
                 if (!mFirstFix) {   //只定位一次就够了
                     mFirstFix = true;
-                    addCircle(location, amapLocation.getAccuracy());//添加定位精度圆
-                    addMarker(location);//添加定位图标
-                    mSensorHelper.setCurrentMarker(mLocMarker);//定位图标旋转
+                    addCircle(searchLatlon, amapLocation.getAccuracy());//添加定位精度圆
+                    addMarker(searchLatlon);//添加定位图标
+//                    mSensorHelper.setCurrentMarker(mLocMarker);//定位图标旋转
 
                     //停止定位
                     mlocationClient.stopLocation();
                 } else {
 
-                    mCircle.setCenter(location);
+                    mCircle.setCenter(searchLatlon);
                     mCircle.setRadius(amapLocation.getAccuracy());
-                    mLocMarker.setPosition(location);
+                    mLocMarker.setPosition(searchLatlon);
                 }
 
                 Log.e("Location:", "Here");
 
-                aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 18));
+                aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(searchLatlon, 18));
             } else {
                 String errText = "定位失败," + amapLocation.getErrorCode() + ": " + amapLocation.getErrorInfo();
                 Log.e("AmapErr", errText);
 
                 Toast.makeText(this, errText, Toast.LENGTH_LONG).show();
+
+                LatLng latLng = aMap.getCameraPosition().target;
+
+                addCircle(latLng, DEFAULT_LOCATION_RADIUS);
+                addMarker(latLng);
             }
         }
 
@@ -370,15 +555,174 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             return;
         }
         Bitmap bMap = BitmapFactory.decodeResource(this.getResources(),
-                R.drawable.navi_map_gps_locked);
+                R.drawable.marker);
         BitmapDescriptor des = BitmapDescriptorFactory.fromBitmap(bMap);
 
-//		BitmapDescriptor des = BitmapDescriptorFactory.fromResource(R.drawable.navi_map_gps_locked);
         MarkerOptions options = new MarkerOptions();
         options.icon(des);
-        options.anchor(0.5f, 0.5f);
+        options.anchor(0.5f, 0.75f);
         options.position(latlng);
         mLocMarker = aMap.addMarker(options);
         mLocMarker.setTitle(LOCATION_MARKER_FLAG);
+    }
+
+    private void addBabyMarker(Baby baby, int index) {
+
+        LatLng latLng = new LatLng(baby.getBabyLat(), baby.getBabyLong());
+
+        Bitmap bMap = BitmapFactory.decodeResource(this.getResources(),
+                R.drawable.baby_marker);
+        BitmapDescriptor des = BitmapDescriptorFactory.fromBitmap(bMap);
+
+        MarkerOptions options = new MarkerOptions();
+        options.icon(des);
+        options.snippet(index + "");
+        options.anchor(0.5f, 0.75f);
+        options.position(latLng);
+        Marker marker = aMap.addMarker(options);
+        marker.setTitle(baby.getBabyName());
+
+        markers.add(index, marker);
+    }
+
+    //添加宝贝
+    class AddBabyAsyncTask extends AsyncTask<RequestBody, Void, String> {
+
+        @Override
+        protected String doInBackground(RequestBody... requestBodies) {
+
+            String result = null;
+
+            //发起请求
+            try {
+
+                result = post(DEFAULT_URL_ADD_BABY, requestBodies[0]);
+
+            } catch (Exception ex) {
+
+                ex.printStackTrace();
+
+                result = "{result:" + -1 + "}";
+            }
+
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+
+            if (progressDialog != null) {
+
+                //消除
+                progressDialog.setCancelable(true);
+                progressDialog.dismiss();
+                progressDialog = null;
+            }
+
+            JSONObject result = JSONObject.parseObject(s);
+            String content = null;
+
+            if (result.getInteger(JSON_OBJECT_KEY_RESULT) > 0) {
+
+                content = "添加成功！";
+            } else {
+
+                content = "添加失败,请稍后再试！";
+            }
+
+            //结果
+            MaterialDialog alertDialog = new MaterialDialog.Builder(MainActivity.this)
+                    .title(R.string.alert_result_title)
+                    .positiveText(R.string.positive_text)
+                    .content(content)
+                    .build();
+
+            alertDialog.show();
+        }
+
+        String post(String url, RequestBody formBabdy) throws IOException {
+            Request request = new Request.Builder()
+                    .url(url)
+                    .post(formBabdy)
+                    .build();
+            Response response = client.newCall(request).execute();
+            return response.body().string();
+        }
+    }
+
+    //搜索宝贝
+    class FindBabyAsyncTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected void onPostExecute(String s) {
+
+            if (progressDialog != null) {
+
+                //消除
+                progressDialog.setCancelable(true);
+                progressDialog.dismiss();
+                progressDialog = null;
+            }
+
+            //转换成数组
+            if (s == null) {
+
+                //结果
+                MaterialDialog alertDialog = new MaterialDialog.Builder(MainActivity.this)
+                        .title(R.string.alert_result_title)
+                        .positiveText(R.string.positive_text)
+                        .content("请求失败，请稍后再试！")
+                        .build();
+
+                alertDialog.show();
+            }
+
+            //清空原来的
+            if (markers != null) {
+                babyList = null;
+                for (Marker marker : markers) {
+
+                    marker.remove();
+                }
+
+                markers = null;
+            }
+
+            //找到的数组
+            babyList = JSONObject.parseArray(s, Baby.class);
+            markers = new ArrayList<>();
+
+            //更新地图，地图秒点
+            for (int i = 0; i < babyList.size(); i++) {
+
+                addBabyMarker(babyList.get(i), i);
+            }
+        }
+
+        @Override
+        protected String doInBackground(String... strings) {
+
+            String result = null;
+
+            try {
+
+                result = get(strings[0]);
+
+            } catch (Exception ex) {
+
+                ex.printStackTrace();
+            }
+
+            return result;
+        }
+
+        String get(String url) throws IOException {
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+
+            Response response = client.newCall(request).execute();
+            return response.body().string();
+        }
     }
 }

@@ -31,4 +31,5 @@ dependencies {
     compile 'com.afollestad.material-dialogs:core:0.9.4.5'
     compile 'com.squareup.okhttp3:okhttp:3.8.0'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.6.0'
+    compile 'com.alibaba:fastjson:1.1.57.android'
 }

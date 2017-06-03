@@ -15,6 +15,10 @@
     <string name="baby_secret_text_hint">秘密问题</string>
     <string name="baby_key_text_hint">秘密答案</string>
     <string name="baby_finder_phone_text_hint">我的号码</string>
-    <string name="baby_search_circle">搜索半径</string>
+    <string name="baby_search_circle">搜索半径（1000）</string>
+    <string name="err_hint">请输入完整信息！</string>
+    <string name="progress_hint">正在请求。。。</string>
+    <string name="progress_title">请求</string>
+    <string name="alert_result_title">请求结果</string>
 
 </resources>
