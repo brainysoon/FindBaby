@@ -22,18 +22,19 @@ import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationClient;
 import com.amap.api.location.AMapLocationClientOption;
 import com.amap.api.location.AMapLocationListener;
-import com.amap.api.maps2d.AMap;
-import com.amap.api.maps2d.CameraUpdateFactory;
-import com.amap.api.maps2d.LocationSource;
-import com.amap.api.maps2d.MapView;
-import com.amap.api.maps2d.model.BitmapDescriptor;
-import com.amap.api.maps2d.model.BitmapDescriptorFactory;
-import com.amap.api.maps2d.model.CameraPosition;
-import com.amap.api.maps2d.model.Circle;
-import com.amap.api.maps2d.model.CircleOptions;
-import com.amap.api.maps2d.model.LatLng;
-import com.amap.api.maps2d.model.Marker;
-import com.amap.api.maps2d.model.MarkerOptions;
+import com.amap.api.maps.AMap;
+import com.amap.api.maps.CameraUpdateFactory;
+import com.amap.api.maps.LocationSource;
+import com.amap.api.maps.MapView;
+import com.amap.api.maps.model.BitmapDescriptor;
+import com.amap.api.maps.model.BitmapDescriptorFactory;
+import com.amap.api.maps.model.CameraPosition;
+import com.amap.api.maps.model.Circle;
+import com.amap.api.maps.model.CircleOptions;
+import com.amap.api.maps.model.LatLng;
+import com.amap.api.maps.model.Marker;
+import com.amap.api.maps.model.MarkerOptions;
+import com.amap.api.maps.offlinemap.OfflineMapManager;
 import com.getbase.floatingactionbutton.FloatingActionButton;
 import com.getbase.floatingactionbutton.FloatingActionsMenu;
 
@@ -53,7 +54,8 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity implements LocationSource, AMapLocationListener {
+public class MainActivity extends AppCompatActivity implements LocationSource,
+        AMapLocationListener, OfflineMapManager.OfflineMapDownloadListener {
 
     /**
      * 地图 相关
@@ -384,6 +386,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                                             MaterialDialog alertDialog = new MaterialDialog.Builder(MainActivity.this)
                                                     .title(title)
                                                     .content(content)
+                                                    .cancelable(false)
                                                     .positiveText(R.string.positive_text)
                                                     .build();
 
@@ -478,6 +481,19 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
                     //停止定位
                     mlocationClient.stopLocation();
+
+                    //下载离线地图
+                    //构造OfflineMapManager对象
+                    OfflineMapManager amapManager = new OfflineMapManager(this, this);
+                    //按照citycode下载
+                    try {
+
+                        amapManager.downloadByCityCode(amapLocation.getCityCode());
+
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+
                 } else {
 
                     mCircle.setCenter(searchLatlon);
@@ -692,6 +708,11 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             babyList = JSONObject.parseArray(s, Baby.class);
             markers = new ArrayList<>();
 
+            if (babyList == null) {
+
+                return;
+            }
+
             //更新地图，地图秒点
             for (int i = 0; i < babyList.size(); i++) {
 
@@ -724,5 +745,20 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             Response response = client.newCall(request).execute();
             return response.body().string();
         }
+    }
+
+    @Override
+    public void onDownload(int i, int i1, String s) {
+
+    }
+
+    @Override
+    public void onCheckUpdate(boolean b, String s) {
+
+    }
+
+    @Override
+    public void onRemove(boolean b, String s, String s1) {
+
     }
 }
