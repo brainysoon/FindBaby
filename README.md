@@ -6,6 +6,7 @@
 3. UML 文档 : [UML](https://github.com/brainysoon/FindBaby/tree/master/UML)
 4. 素材 : [Matter](https://github.com/brainysoon/FindBaby/tree/master/Matter)
 5. 论文文档 : [Doc](https://github.com/brainysoon/FindBaby/tree/master/Doc)
+6. Apk安装包: [寻找宝贝](https://github.com/brainysoon/FindBaby/releases/download/FindBaby1.1/popfind-1.1.apk)
 
 ## App演示效果
 <img src="https://github.com/brainysoon/FindBaby/blob/master/Doc/S70604-104531.jpg" width="20%" />
